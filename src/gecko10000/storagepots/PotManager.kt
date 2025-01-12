@@ -19,9 +19,12 @@ import org.bukkit.event.world.ChunkLoadEvent
 import org.bukkit.event.world.ChunkUnloadEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
+import org.bukkit.util.Vector
 import org.koin.core.component.inject
 import redempt.redlib.misc.EventListener
 import redempt.redlib.misc.Task
+import kotlin.math.ceil
+import kotlin.math.max
 import kotlin.math.min
 
 class PotManager : MyKoinComponent {
@@ -44,7 +47,13 @@ class PotManager : MyKoinComponent {
         EventListener(BlockBreakEvent::class.java) { e ->
             val pot = loadedPots[e.block] ?: return@EventListener
             e.isCancelled = true
-            // TODO: try drop up to a stack
+            val inPot = pot.info.item ?: return@EventListener
+            val amountToDrop = min(pot.info.amount, (inPot.maxStackSize).toLong()).toInt()
+            if (amountToDrop == 0) return@EventListener
+            remove(pot, amountToDrop)
+            e.block.world.dropItem(e.block.location.add(0.5, 1.0, 0.5), inPot.asQuantity(amountToDrop)) {
+                it.velocity = Vector(0, 0, 0)
+            }
         }
         EventListener(PlayerInteractEvent::class.java, EventPriority.HIGHEST) { e ->
             if (e.action != Action.RIGHT_CLICK_BLOCK) return@EventListener
@@ -63,10 +72,9 @@ class PotManager : MyKoinComponent {
             }
             val item = pot.info.item ?: itemInHand.asQuantity(1)
             val availableStorage = pot.info.maxAmount - pot.info.amount
-            if (availableStorage > 0 && itemInHand.isSimilar(item)) {
-                val itemsTransferred = min(availableStorage, itemInHand.amount.toLong())
-                itemInHand.amount -= itemsTransferred.toInt()
-                updatePot(pot, pot.info.copy(item = item, amount = pot.info.amount + itemsTransferred))
+            if (availableStorage >= 0 && itemInHand.isSimilar(item)) {
+                val remaining = tryAdd(pot, itemInHand)
+                itemInHand.amount = remaining
             } else {
                 StoragePotGUI(player, pot)
             }
@@ -127,7 +135,58 @@ class PotManager : MyKoinComponent {
             }
     }
 
-    fun updatePot(pot: Pot, newInfo: PotInfo): Pot {
+    // Returns the amount of items
+    // left over from trying to add.
+    fun tryAdd(pot: Pot, item: ItemStack): Int {
+        if (item.isEmpty) return 0
+        var info = pot.info
+        if (info.item == null) {
+            info = info.copy(item = item.asQuantity(1), amount = item.amount.toLong())
+            updatePot(pot, info)
+            return 0
+        }
+        if (!item.isSimilar(info.item)) {
+            return item.amount
+        }
+        var availableSpace = info.maxAmount - info.amount
+        val neededSpace = item.amount - availableSpace
+        if (neededSpace > 0 && info.isAutoUpgrading) {
+            // Perform upgrade
+            val upgradeIncrease = plugin.config.storageUpgradeAmount
+            val diffFromUpgrade = upgradeIncrease + 1
+            val numUpgrades = ceil(neededSpace / diffFromUpgrade.toDouble()).toInt()
+            info = info.copy(
+                amount = info.amount - numUpgrades,
+                maxAmount = info.maxAmount + numUpgrades * upgradeIncrease,
+                isLocked = true,
+            )
+            availableSpace = info.maxAmount
+        }
+        val toInsert = min(item.amount.toLong(), availableSpace)
+        info = info.copy(
+            amount = info.amount + toInsert,
+        )
+        updatePot(pot, info)
+        return item.amount - toInsert.toInt()
+    }
+
+    fun remove(pot: Pot, amount: Int) {
+        val newAmount = max(pot.info.amount - amount, 0)
+        val item = if (newAmount == 0L && !pot.info.isLocked) null else pot.info.item
+        val newInfo = pot.info.copy(amount = newAmount, item = item)
+        updatePot(pot, newInfo)
+    }
+
+    fun upgrade(pot: Pot, numTimes: Int) {
+        val newInfo = pot.info.copy(
+            maxAmount = pot.info.maxAmount + plugin.config.storageUpgradeAmount * numTimes,
+            amount = pot.info.amount - numTimes,
+            isLocked = true
+        )
+        updatePot(pot, newInfo)
+    }
+
+    private fun updatePot(pot: Pot, newInfo: PotInfo): Pot {
         val newPot = pot.copy(info = newInfo)
         loadedPots[newPot.block] = newPot
         return newPot
@@ -147,6 +206,8 @@ class PotManager : MyKoinComponent {
     fun saveAll() {
         loadedPots.values.forEach(this::savePot)
     }
+
+    fun getPot(block: Block): Pot = loadedPots.getValue(block)
 
     fun potItem(info: PotInfo): ItemStack {
         val dataString = json.encodeToString(info)
