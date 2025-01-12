@@ -2,10 +2,12 @@ package gecko10000.storagepots
 
 import gecko10000.geckolib.config.YamlFileManager
 import gecko10000.storagepots.config.Config
+import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.di.MyKoinContext
 import org.bukkit.plugin.java.JavaPlugin
+import org.koin.core.component.inject
 
-class StoragePots : JavaPlugin() {
+class StoragePots : JavaPlugin(), MyKoinComponent {
 
     private val configFile = YamlFileManager(
         configDirectory = dataFolder,
@@ -15,8 +17,14 @@ class StoragePots : JavaPlugin() {
     val config: Config
         get() = configFile.value
 
+    private val potManager: PotManager by inject()
+
     override fun onEnable() {
         MyKoinContext.init(this)
+    }
+
+    override fun onDisable() {
+        potManager.saveAll()
     }
 
     fun reloadConfigs() {

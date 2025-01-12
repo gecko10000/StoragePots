@@ -23,7 +23,9 @@ data class Config(
         Component.empty(),
         parseMM("<aqua>Place to activate.")
     ),
+    private val potGUIName: Component = parseMM("<dark_blue>Storage Pot: <amount>/<max>"),
     val defaultMaxAmount: Long = 1000,
+    val storageUpgradeAmount: Int = 10,
 ) {
     fun potLore(potInfo: PotInfo): List<Component> {
         val lore = if (potInfo.item == null) emptyPotLore else fullPotLore
@@ -38,6 +40,14 @@ data class Config(
                     it.matchLiteral("<item>").replacement(potInfo.item.effectiveName())
                 }
             } else withAmounts
+        }
+    }
+
+    fun potGUIName(info: PotInfo): Component {
+        return potGUIName.replaceText {
+            it.matchLiteral("<amount>").replacement(info.amount.toString())
+        }.replaceText {
+            it.matchLiteral("<max>").replacement(info.maxAmount.toString())
         }
     }
 }

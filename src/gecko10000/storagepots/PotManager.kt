@@ -44,20 +44,29 @@ class PotManager : MyKoinComponent {
         EventListener(BlockBreakEvent::class.java) { e ->
             val pot = loadedPots[e.block] ?: return@EventListener
             e.isCancelled = true
+            // TODO: try drop up to a stack
         }
         EventListener(PlayerInteractEvent::class.java, EventPriority.HIGHEST) { e ->
             if (e.action != Action.RIGHT_CLICK_BLOCK) return@EventListener
             val pot = loadedPots[e.clickedBlock] ?: return@EventListener
             val player = e.player
             if (player.isSneaking) return@EventListener
-            // TODO: try insert from main hand. If not, open GUI
+            e.isCancelled = true
+            // Open GUI if:
+            // - hand is empty
+            // - storage is full
+            // - item in hand differs from storage pot's
             val itemInHand = player.inventory.itemInMainHand
-            val newInfo = if (pot.info.item == null) pot.info.copy(item = itemInHand.asQuantity(1)) else pot.info
-            if (itemInHand.isSimilar(newInfo.item)) {
-                val availableStorage = newInfo.maxAmount - newInfo.amount
+            if (itemInHand.isEmpty) {
+                StoragePotGUI(player, pot)
+                return@EventListener
+            }
+            val item = pot.info.item ?: itemInHand.asQuantity(1)
+            val availableStorage = pot.info.maxAmount - pot.info.amount
+            if (availableStorage > 0 && itemInHand.isSimilar(item)) {
                 val itemsTransferred = min(availableStorage, itemInHand.amount.toLong())
                 itemInHand.amount -= itemsTransferred.toInt()
-                updatePot(pot, newInfo.copy(amount = newInfo.amount + itemsTransferred))
+                updatePot(pot, pot.info.copy(item = item, amount = pot.info.amount + itemsTransferred))
             } else {
                 StoragePotGUI(player, pot)
             }
@@ -102,7 +111,6 @@ class PotManager : MyKoinComponent {
     private fun loadPot(pot: DecoratedPot) {
         val infoString = pot.persistentDataContainer.get(potKey, PersistentDataType.STRING)
         infoString ?: return // Not a storage pot, ignore.
-        println("${pot.location}: $infoString")
         val info = json.decodeFromString<PotInfo>(infoString)
         val block = pot.block
         loadedPots[block] = Pot(block, info)
@@ -133,6 +141,11 @@ class PotManager : MyKoinComponent {
         }
         val data = json.encodeToString(pot.info)
         decoratedPot.persistentDataContainer.set(potKey, PersistentDataType.STRING, data)
+        decoratedPot.update()
+    }
+
+    fun saveAll() {
+        loadedPots.values.forEach(this::savePot)
     }
 
     fun potItem(info: PotInfo): ItemStack {
