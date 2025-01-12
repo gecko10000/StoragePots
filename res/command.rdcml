@@ -1,0 +1,12 @@
+storagepots,sp {
+    reload {
+        hook reload
+        permission storagepots.reload
+        help Reload the configs
+    }
+    give player:target?(context self) {
+        hook give
+        permission storagepots.give
+        help Give a mouse a cookie
+    }
+}
