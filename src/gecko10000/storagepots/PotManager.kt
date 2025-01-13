@@ -1,7 +1,6 @@
 package gecko10000.storagepots
 
 import gecko10000.storagepots.di.MyKoinComponent
-import gecko10000.storagepots.guis.StoragePotGUI
 import gecko10000.storagepots.model.Pot
 import gecko10000.storagepots.model.PotInfo
 import kotlinx.serialization.encodeToString
@@ -12,6 +11,7 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
 import org.bukkit.block.DecoratedPot
+import org.bukkit.event.Event
 import org.bukkit.event.EventPriority
 import org.bukkit.event.block.*
 import org.bukkit.event.player.PlayerInteractEvent
@@ -30,6 +30,7 @@ import kotlin.math.min
 class PotManager : MyKoinComponent {
 
     private val plugin: StoragePots by inject()
+    private val guiManager: GUIManager by inject()
     private val json: Json by inject()
 
     private val potKey = NamespacedKey(plugin, "pot")
@@ -41,10 +42,12 @@ class PotManager : MyKoinComponent {
             .forEach(this::loadChunk)
         EventListener(ChunkLoadEvent::class.java) { e -> loadChunk(e.chunk) }
         EventListener(ChunkUnloadEvent::class.java) { e -> unloadChunk(e.chunk) }
-        EventListener(BlockPlaceEvent::class.java) { e ->
+        EventListener(BlockPlaceEvent::class.java, EventPriority.MONITOR) { e ->
+            if (e.isCancelled) return@EventListener
             this.place(e.itemInHand, e.block)
         }
-        EventListener(BlockBreakEvent::class.java) { e ->
+        EventListener(BlockBreakEvent::class.java, EventPriority.HIGHEST) { e ->
+            if (e.isCancelled) return@EventListener
             val pot = loadedPots[e.block] ?: return@EventListener
             e.isCancelled = true
             val inPot = pot.info.item ?: return@EventListener
@@ -56,6 +59,7 @@ class PotManager : MyKoinComponent {
             }
         }
         EventListener(PlayerInteractEvent::class.java, EventPriority.HIGHEST) { e ->
+            if (e.useInteractedBlock() == Event.Result.DENY) return@EventListener
             if (e.action != Action.RIGHT_CLICK_BLOCK) return@EventListener
             val pot = loadedPots[e.clickedBlock] ?: return@EventListener
             val player = e.player
@@ -67,7 +71,7 @@ class PotManager : MyKoinComponent {
             // - item in hand differs from storage pot's
             val itemInHand = player.inventory.itemInMainHand
             if (itemInHand.isEmpty) {
-                StoragePotGUI(player, pot)
+                guiManager.open(player, pot)
                 return@EventListener
             }
             val item = pot.info.item ?: itemInHand.asQuantity(1)
@@ -76,11 +80,11 @@ class PotManager : MyKoinComponent {
                 val remaining = tryAdd(pot, itemInHand)
                 itemInHand.amount = remaining
             } else {
-                StoragePotGUI(player, pot)
+                guiManager.open(player, pot)
             }
         }
-        EventListener(BlockPistonExtendEvent::class.java) { e -> handlePiston(e, e.blocks) }
-        EventListener(BlockPistonRetractEvent::class.java) { e -> handlePiston(e, e.blocks) }
+        EventListener(BlockPistonExtendEvent::class.java, EventPriority.LOWEST) { e -> handlePiston(e, e.blocks) }
+        EventListener(BlockPistonRetractEvent::class.java, EventPriority.LOWEST) { e -> handlePiston(e, e.blocks) }
 
         Task.syncRepeating({ ->
             loadedPots.values.forEach(this::savePot)
@@ -101,13 +105,16 @@ class PotManager : MyKoinComponent {
         savePot(pot)
     }
 
-    private fun `break`(e: BlockDropItemEvent) {
-        val pot = loadedPots.remove(e.block) ?: return
-        val itemStack = potItem(pot.info)
-        val item = e.items.firstOrNull() ?: return
-        item.itemStack = itemStack
-        e.items.clear()
-        e.items.add(item)
+    fun `break`(pot: Pot) {
+        val pot = loadedPots.remove(pot.block) ?: return
+        val item = if (pot.info.isLocked) pot.info.item else null
+        val potItemInfo = pot.info.copy(
+            item = item,
+            amount = 0,
+        )
+        pot.block.type = Material.AIR
+        pot.block.world.dropItem(pot.block.location.toCenterLocation(), potItem(potItemInfo))
+        guiManager.destroy(pot.block)
     }
 
     private fun loadChunk(chunk: Chunk) {
@@ -139,11 +146,13 @@ class PotManager : MyKoinComponent {
     // left over from trying to add.
     fun tryAdd(pot: Pot, item: ItemStack): Int {
         if (item.isEmpty) return 0
+        val itemName = item.type.name
+        if (itemName.endsWith("SHULKER_BOX") || itemName.endsWith("BUNDLE") || item.persistentDataContainer.has(potKey)) {
+            return item.amount
+        }
         var info = pot.info
         if (info.item == null) {
-            info = info.copy(item = item.asQuantity(1), amount = item.amount.toLong())
-            updatePot(pot, info)
-            return 0
+            info = info.copy(item = item.asQuantity(1))
         }
         if (!item.isSimilar(info.item)) {
             return item.amount
@@ -155,12 +164,13 @@ class PotManager : MyKoinComponent {
             val upgradeIncrease = plugin.config.storageUpgradeAmount
             val diffFromUpgrade = upgradeIncrease + 1
             val numUpgrades = ceil(neededSpace / diffFromUpgrade.toDouble()).toInt()
+
+            item.amount -= numUpgrades
             info = info.copy(
-                amount = info.amount - numUpgrades,
                 maxAmount = info.maxAmount + numUpgrades * upgradeIncrease,
                 isLocked = true,
             )
-            availableSpace = info.maxAmount
+            availableSpace = info.maxAmount - info.amount
         }
         val toInsert = min(item.amount.toLong(), availableSpace)
         info = info.copy(
@@ -178,17 +188,24 @@ class PotManager : MyKoinComponent {
     }
 
     fun upgrade(pot: Pot, numTimes: Int) {
+        val upgrades = min(numTimes.toLong(), pot.info.amount)
+        if (upgrades == 0L) return
         val newInfo = pot.info.copy(
-            maxAmount = pot.info.maxAmount + plugin.config.storageUpgradeAmount * numTimes,
-            amount = pot.info.amount - numTimes,
+            maxAmount = pot.info.maxAmount + plugin.config.storageUpgradeAmount * upgrades,
+            amount = pot.info.amount - upgrades,
             isLocked = true
         )
         updatePot(pot, newInfo)
     }
 
+    fun toggleAutoUpgrades(pot: Pot) {
+        updatePot(pot, pot.info.copy(isAutoUpgrading = !pot.info.isAutoUpgrading))
+    }
+
     private fun updatePot(pot: Pot, newInfo: PotInfo): Pot {
         val newPot = pot.copy(info = newInfo)
         loadedPots[newPot.block] = newPot
+        guiManager.update(newPot.block)
         return newPot
     }
 

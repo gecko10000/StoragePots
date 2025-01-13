@@ -14,17 +14,18 @@ data class Config(
     val autosaveIntervalSeconds: Int = 300,
     val potName: Component = parseMM("<gold><b>Storage Pot"),
     private val fullPotLore: List<Component> = listOf(
-        parseMM("<yellow>Storing <amount>/<max> <item>"),
+        parseMM("<yellow>Stores <max> <item>"),
         Component.empty(),
         parseMM("<aqua>Place to activate.")
     ),
     private val emptyPotLore: List<Component> = listOf(
-        parseMM("<green>Empty (<max> storage)"),
+        parseMM("<green>Stores <max> items"),
         Component.empty(),
         parseMM("<aqua>Place to activate.")
     ),
     private val potGUIName: Component = parseMM("<dark_blue>Storage Pot: <amount>/<max>"),
     val defaultMaxAmount: Long = 1000,
+    val defaultAutoUpgrade: Boolean = false,
     val storageUpgradeAmount: Int = 10,
 ) {
     fun potLore(potInfo: PotInfo): List<Component> {
@@ -37,7 +38,11 @@ data class Config(
             }
             if (potInfo.item != null) {
                 withAmounts.replaceText {
-                    it.matchLiteral("<item>").replacement(potInfo.item.effectiveName())
+                    val meta = potInfo.item.itemMeta
+                    val name = meta.customName() ?: if (meta.hasItemName()) meta.itemName() else Component.translatable(
+                        potInfo.item.translationKey()
+                    )
+                    it.matchLiteral("<item>").replacement(name)
                 }
             } else withAmounts
         }

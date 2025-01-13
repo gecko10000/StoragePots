@@ -34,7 +34,7 @@ class CommandHandler : MyKoinComponent {
                     amount = 0,
                     maxAmount = plugin.config.defaultMaxAmount,
                     isLocked = false,
-                    isAutoUpgrading = false,
+                    isAutoUpgrading = plugin.config.defaultAutoUpgrade,
                 )
             )
         )

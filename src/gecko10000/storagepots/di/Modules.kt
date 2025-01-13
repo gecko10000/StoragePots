@@ -1,6 +1,7 @@
 package gecko10000.storagepots.di
 
 import gecko10000.storagepots.CommandHandler
+import gecko10000.storagepots.GUIManager
 import gecko10000.storagepots.PotManager
 import gecko10000.storagepots.StoragePots
 import kotlinx.serialization.json.Json
@@ -10,6 +11,7 @@ fun pluginModules(plugin: StoragePots) = module {
     single { plugin }
     single(createdAtStart = true) { PotManager() }
     single(createdAtStart = true) { CommandHandler() }
+    single(createdAtStart = true) { GUIManager() }
     single {
         Json {
             ignoreUnknownKeys = true

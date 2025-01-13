@@ -18,6 +18,7 @@ class StoragePots : JavaPlugin(), MyKoinComponent {
         get() = configFile.value
 
     private val potManager: PotManager by inject()
+    private val guiManager: GUIManager by inject()
 
     override fun onEnable() {
         MyKoinContext.init(this)
@@ -25,6 +26,7 @@ class StoragePots : JavaPlugin(), MyKoinComponent {
 
     override fun onDisable() {
         potManager.saveAll()
+        guiManager.shutdown()
     }
 
     fun reloadConfigs() {
