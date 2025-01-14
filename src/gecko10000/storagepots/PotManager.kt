@@ -65,23 +65,7 @@ class PotManager : MyKoinComponent {
             val player = e.player
             if (player.isSneaking) return@EventListener
             e.isCancelled = true
-            // Open GUI if:
-            // - hand is empty
-            // - storage is full
-            // - item in hand differs from storage pot's
-            val itemInHand = player.inventory.itemInMainHand
-            if (itemInHand.isEmpty) {
-                guiManager.open(player, pot)
-                return@EventListener
-            }
-            val item = pot.info.item ?: itemInHand.asQuantity(1)
-            val availableStorage = pot.info.maxAmount - pot.info.amount
-            if (availableStorage >= 0 && itemInHand.isSimilar(item)) {
-                val remaining = tryAdd(pot, itemInHand)
-                itemInHand.amount = remaining
-            } else {
-                guiManager.open(player, pot)
-            }
+            guiManager.open(player, pot)
         }
         EventListener(BlockPistonExtendEvent::class.java, EventPriority.LOWEST) { e -> handlePiston(e, e.blocks) }
         EventListener(BlockPistonRetractEvent::class.java, EventPriority.LOWEST) { e -> handlePiston(e, e.blocks) }
@@ -141,6 +125,9 @@ class PotManager : MyKoinComponent {
                 }
             }
     }
+
+    // Definitely has room if auto upgrading, might have room otherwise (need to check)
+    fun hasRoom(pot: Pot, amount: Int) = pot.info.isAutoUpgrading || pot.info.amount + amount <= pot.info.maxAmount
 
     // Returns the amount of items
     // left over from trying to add.

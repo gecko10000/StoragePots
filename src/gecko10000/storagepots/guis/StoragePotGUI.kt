@@ -2,10 +2,7 @@ package gecko10000.storagepots.guis
 
 import com.google.common.collect.HashMultimap
 import gecko10000.geckolib.GUI
-import gecko10000.geckolib.extensions.MM
-import gecko10000.geckolib.extensions.isEmpty
-import gecko10000.geckolib.extensions.parseMM
-import gecko10000.geckolib.extensions.withDefaults
+import gecko10000.geckolib.extensions.*
 import gecko10000.storagepots.GUIManager
 import gecko10000.storagepots.PotManager
 import gecko10000.storagepots.StoragePots
@@ -23,7 +20,6 @@ import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.inventory.*
-import org.bukkit.persistence.PersistentDataType
 import org.koin.core.component.inject
 import redempt.redlib.inventorygui.InventoryGUI
 import redempt.redlib.inventorygui.ItemButton
@@ -56,6 +52,32 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
 
     init {
         inventory = createInventory()
+    }
+
+    private fun displayItem(): ItemStack {
+        val displayItem = pot.info.item?.clone() ?: return GUI.FILLER
+        val isLocked = pot.info.isLocked
+        val name = MM.deserialize(
+            "<lock> <item>",
+            Placeholder.parsed(
+                "lock",
+                if (isLocked) "<red>\uD83D\uDD12</red>" else "<green>\uD83D\uDD13</green>"
+            ),
+            Placeholder.component("item", displayItem.name())
+        ).withDefaults()
+        val loreStrings =
+            if (isLocked) listOf("<dark_aqua>This pot has been upgraded", "<dark_aqua>and is <red><b>locked</b></red>.")
+            else listOf(
+                "<dark_aqua>This pot has not been upgraded",
+                "<dark_aqua>and is <green><b>unlocked</b></green>."
+            )
+        displayItem.editMeta { meta ->
+            meta.displayName(name)
+            meta.lore(
+                loreStrings.map { parseMM(it) }
+            )
+        }
+        return displayItem
     }
 
     private fun MutableList<Component>.lockedDisclaimer() {
@@ -309,15 +331,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         gui.fill(OUTPUT_SLOT + 1, SIZE, GUI.FILLER)
         val item = pot.info.item
         if (item != null) {
-            val displayItem = item.clone()
-            displayItem.editMeta {
-                it.persistentDataContainer.set(
-                    displayRandomizeKey,
-                    PersistentDataType.STRING,
-                    UUID.randomUUID().toString()
-                )
-            }
-            gui.inventory.setItem(0, displayItem)
+            gui.inventory.setItem(0, displayItem())
         }
         gui.openSlot(INPUT_SLOT)
         gui.inventory.setItem(INPUT_SLOT, null)

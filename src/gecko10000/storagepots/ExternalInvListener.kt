@@ -4,10 +4,8 @@ import gecko10000.geckolib.extensions.isEmpty
 import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.model.Pot
 import org.bukkit.Material
-import org.bukkit.block.Block
-import org.bukkit.block.BlockFace
-import org.bukkit.block.DecoratedPot
-import org.bukkit.block.Hopper
+import org.bukkit.block.*
+import org.bukkit.block.data.Directional
 import org.bukkit.event.inventory.InventoryMoveItemEvent
 import org.bukkit.inventory.Inventory
 import org.koin.core.component.inject
@@ -68,9 +66,33 @@ class ExternalInvListener : MyKoinComponent {
         tryOutput(pot, under)
     }
 
-    fun isStoragePotInventory(inventory: Inventory): Boolean {
+    private fun isStoragePotInventory(inventory: Inventory): Boolean {
         val pot = inventory.getHolder(false) as? DecoratedPot ?: return false
         return potManager.getPot(pot.block) != null
+    }
+
+    private fun handleDropper(dropper: Dropper, e: InventoryMoveItemEvent) {
+        val direction = (dropper.blockData as Directional).facing
+        val destination = dropper.block.getRelative(direction)
+        // Facing into decorated pot
+        if (destination.type != Material.DECORATED_POT) return
+        // Which is a storage pot
+        val pot = potManager.getPot(destination) ?: return
+        val itemFits = pot.info.item == null || e.item.isSimilar(pot.info.item)
+        if (!itemFits || !potManager.hasRoom(pot, e.item.amount)) {
+            e.isCancelled = true
+            return
+        }
+        // We don't cancel. Instead, we set the item amount to 0.
+        // This way, item is removed from dropper but doesn't go
+        // into the decorated pot.
+        val leftover = potManager.tryAdd(pot, e.item)
+        if (leftover > 0) {
+            val loc = destination.location
+            val leftoverItem = e.item.asQuantity(leftover)
+            plugin.logger.warning("Pot at $loc had room but gave leftovers $leftoverItem")
+        }
+        e.item.amount = 0
     }
 
     init {
@@ -78,6 +100,11 @@ class ExternalInvListener : MyKoinComponent {
             potManager.getAll().forEach(this::hopperTick)
         }, 0L, plugin.config.hopperTransferCooldown.toLong())
         EventListener(InventoryMoveItemEvent::class.java) { e ->
+            val holder = e.source.getHolder(false)
+            if (holder is Dropper) {
+                handleDropper(holder, e)
+                return@EventListener
+            }
             if (isStoragePotInventory(e.source) || isStoragePotInventory(e.destination)) {
                 e.isCancelled = true
             }
