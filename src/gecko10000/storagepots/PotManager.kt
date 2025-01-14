@@ -144,7 +144,8 @@ class PotManager : MyKoinComponent {
 
     // Returns the amount of items
     // left over from trying to add.
-    fun tryAdd(pot: Pot, item: ItemStack): Int {
+    fun tryAdd(pot: Pot, item: ItemStack, updateGUI: Boolean = true): Int {
+        val pot = loadedPots[pot.block] ?: return item.amount
         if (item.isEmpty) return 0
         val itemName = item.type.name
         if (itemName.endsWith("SHULKER_BOX") || itemName.endsWith("BUNDLE") || item.persistentDataContainer.has(potKey)) {
@@ -176,15 +177,16 @@ class PotManager : MyKoinComponent {
         info = info.copy(
             amount = info.amount + toInsert,
         )
-        updatePot(pot, info)
+        updatePot(pot, info, updateGUI)
         return item.amount - toInsert.toInt()
     }
 
-    fun remove(pot: Pot, amount: Int) {
+    fun remove(pot: Pot, amount: Int, updateGUI: Boolean = true) {
+        val pot = loadedPots[pot.block] ?: return
         val newAmount = max(pot.info.amount - amount, 0)
-        val item = if (newAmount == 0L && !pot.info.isLocked) null else pot.info.item
+        val item = if (newAmount == 0L && !pot.info.isLocked) null else pot.info.item?.clone()
         val newInfo = pot.info.copy(amount = newAmount, item = item)
-        updatePot(pot, newInfo)
+        updatePot(pot, newInfo, updateGUI)
     }
 
     fun upgrade(pot: Pot, numTimes: Int) {
@@ -202,15 +204,17 @@ class PotManager : MyKoinComponent {
         updatePot(pot, pot.info.copy(isAutoUpgrading = !pot.info.isAutoUpgrading))
     }
 
-    private fun updatePot(pot: Pot, newInfo: PotInfo): Pot {
+    private fun updatePot(pot: Pot, newInfo: PotInfo, updateGUI: Boolean = true): Pot {
         val newPot = pot.copy(info = newInfo)
         loadedPots[newPot.block] = newPot
-        guiManager.update(newPot.block)
+        if (updateGUI) {
+            guiManager.update(newPot.block)
+        }
         return newPot
     }
 
     private fun savePot(pot: Pot) {
-        val decoratedPot = pot.block.state as? DecoratedPot
+        val decoratedPot = pot.block.getState(false) as? DecoratedPot
         if (decoratedPot == null) {
             plugin.logger.warning("Pot at ${pot.block.location} could not be retrieved as a DecoratedPot")
             return
@@ -224,7 +228,9 @@ class PotManager : MyKoinComponent {
         loadedPots.values.forEach(this::savePot)
     }
 
-    fun getPot(block: Block): Pot = loadedPots.getValue(block)
+    fun getPot(block: Block): Pot? = loadedPots[block]
+
+    fun getAll(): Set<Pot> = loadedPots.values.toSet()
 
     fun potItem(info: PotInfo): ItemStack {
         val dataString = json.encodeToString(info)

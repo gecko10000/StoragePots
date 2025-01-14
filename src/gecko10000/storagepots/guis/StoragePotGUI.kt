@@ -102,7 +102,11 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
                 }
             )
         }
-        return ItemButton.create(item) { _ ->
+        return ItemButton.create(item) { e ->
+            if (!e.whoClicked.hasPermission("storagepots.toggleauto")) {
+                e.whoClicked.sendMessage(parseMM("<red>You don't have permission to toggle this!"))
+                return@create
+            }
             potManager.toggleAutoUpgrades(pot)
             updateInventory()
         }
@@ -138,12 +142,12 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         val itemInHotbar = e.whoClicked.inventory.getItem(e.hotbarButton)
         if (e.slot == INPUT_SLOT && !itemInHotbar.isEmpty()) {
             // Either we do nothing if it's the wrong item
-            if (pot.info.item == null || !itemInHotbar!!.isSimilar(pot.info.item)) {
+            if (pot.info.item != null && !itemInHotbar!!.isSimilar(pot.info.item)) {
                 return
             }
             // Or we try to add to the pot and set
             // the item to the leftovers.
-            val leftover = potManager.tryAdd(pot, itemInHotbar)
+            val leftover = potManager.tryAdd(pot, itemInHotbar!!, updateGUI = false)
             itemInHotbar.amount = leftover
         }
         if (e.slot == OUTPUT_SLOT) {
@@ -151,7 +155,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
             // item not allowed
             if (!itemInHotbar.isEmpty() && !itemInHotbar!!.isSimilar(pot.info.item)) return
             val diff = outputItemCount - (itemInHotbar?.amount ?: 0)
-            potManager.remove(pot, diff)
+            potManager.remove(pot, diff, updateGUI = false)
             e.whoClicked.inventory.setItem(e.hotbarButton, pot.info.item!!.asQuantity(outputItemCount))
         }
     }
@@ -163,13 +167,13 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         val cursor = e.cursor
         if (e.slot == INPUT_SLOT) {
             if (cursor.isEmpty) return
-            val leftover = potManager.tryAdd(pot, cursor)
+            val leftover = potManager.tryAdd(pot, cursor, updateGUI = false)
             e.whoClicked.openInventory.setCursor(cursor.asQuantity(leftover))
             return
         }
         if (e.slot == OUTPUT_SLOT) {
             if (!cursor.isEmpty) return
-            potManager.remove(pot, outputItemCount)
+            potManager.remove(pot, outputItemCount, updateGUI = false)
             e.whoClicked.openInventory.setCursor(pot.info.item!!.asQuantity(outputItemCount))
         }
     }
@@ -181,14 +185,14 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         val cursor = e.cursor
         if (e.slot == INPUT_SLOT) {
             if (cursor.isEmpty) return
-            val leftover = potManager.tryAdd(pot, cursor.asOne())
+            val leftover = potManager.tryAdd(pot, cursor.asOne(), updateGUI = false)
             e.whoClicked.openInventory.setCursor(cursor.asQuantity(cursor.amount - 1 + leftover))
             return
         }
         if (e.slot == OUTPUT_SLOT) {
             if (!cursor.isEmpty) return
             val toPickUp = ceil(outputItemCount / 2.0).toInt()
-            potManager.remove(pot, toPickUp)
+            potManager.remove(pot, toPickUp, updateGUI = false)
             e.whoClicked.openInventory.setCursor(pot.info.item!!.asQuantity(toPickUp))
         }
     }
@@ -242,14 +246,14 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         val isPlayerInventory = e.clickedInventory == e.whoClicked.inventory
         if (isPlayerInventory) {
             val clickedItem = e.whoClicked.inventory.getItem(e.slot) ?: return
-            val leftover = potManager.tryAdd(pot, clickedItem)
+            val leftover = potManager.tryAdd(pot, clickedItem, updateGUI = false)
             clickedItem.amount = leftover
             return
         }
         // Here we are sure it's the GUI
         if (e.slot == OUTPUT_SLOT) {
             val leftover = simulateShiftClickInto(e.whoClicked.inventory, pot.info.item!!.asQuantity(outputItemCount))
-            potManager.remove(pot, outputItemCount - leftover)
+            potManager.remove(pot, outputItemCount - leftover, updateGUI = false)
         }
     }
 
@@ -258,13 +262,13 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
     private fun handleOffhandSwap(e: InventoryClickEvent) {
         val offhandItem = e.whoClicked.inventory.itemInOffHand
         if (e.slot == INPUT_SLOT && offhandItem.isSimilar(pot.info.item)) {
-            val leftover = potManager.tryAdd(pot, offhandItem)
+            val leftover = potManager.tryAdd(pot, offhandItem, updateGUI = false)
             offhandItem.amount = leftover
             return
         }
         val item = pot.info.item ?: return
         if (e.slot == OUTPUT_SLOT && offhandItem.isEmpty) {
-            potManager.remove(pot, outputItemCount)
+            potManager.remove(pot, outputItemCount, updateGUI = false)
             e.whoClicked.inventory.setItemInOffHand(item.asQuantity(outputItemCount))
         }
     }
@@ -293,7 +297,9 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
     }
 
     private fun updateInventory(gui: InventoryGUI = this.inventory, isBeforeOpen: Boolean = false) {
-        pot = potManager.getPot(pot.block)
+        pot = potManager.getPot(pot.block) ?: return run {
+            destroy()
+        }
         outputItemCount = pot.info.item?.let {
             min(pot.info.amount, it.maxStackSize.toLong()).toInt()
         } ?: 0

@@ -28,6 +28,8 @@ data class Config(
     val defaultMaxAmount: Long = 1000,
     val defaultAutoUpgrade: Boolean = false,
     val storageUpgradeAmount: Int = 10,
+    val hopperTransferAmount: Int = 1,
+    val hopperTransferCooldown: Int = 8,
 ) {
     fun potLore(potInfo: PotInfo): List<Component> {
         val lore = if (potInfo.item == null) emptyPotLore else fullPotLore
