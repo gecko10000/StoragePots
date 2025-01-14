@@ -331,17 +331,6 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
                 p.updateInventory()
             }
         }
-        viewers.forEach {
-            val player = Bukkit.getPlayer(it) ?: return@forEach
-            player.openInventory.title = LegacyComponentSerializer.legacySection().serialize(newName)
-        }
-        Task.syncDelayed { ->
-            viewers.forEach {
-                val player = Bukkit.getPlayer(it) ?: return@forEach
-                if (!viewers.contains(player.uniqueId)) return@forEach
-                player.updateInventory()
-            }
-        }
     }
 
     private fun updateInventory(gui: InventoryGUI = this.inventory, isBeforeOpen: Boolean = false) {
