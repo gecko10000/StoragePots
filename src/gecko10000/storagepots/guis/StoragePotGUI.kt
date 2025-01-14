@@ -150,7 +150,11 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
                     MM.deserialize(
                         "<red>all <u><amount></u> items in the pot.",
                         Placeholder.unparsed("amount", pot.info.amount.toString())
-                    ).withDefaults()
+                    ).withDefaults(),
+                    Component.empty(),
+                    parseMM("<yellow>Want to extract items out instead?"),
+                    parseMM("<yellow>Left click the pot block to take"),
+                    parseMM("<yellow>out a stack of items."),
                 )
             )
         }
@@ -317,10 +321,26 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
 
     // Maybe if they'd add proper API for changing title...
     private fun changeTitle(newName: Component) {
+        val players = viewers.mapNotNull(Bukkit::getPlayer)
+        players.forEach { p ->
+            p.openInventory.title = LegacyComponentSerializer.legacySection().serialize(newName)
+        }
+        Task.syncDelayed { ->
+            players.forEach { p ->
+                if (!viewers.contains(p.uniqueId)) return@forEach
+                p.updateInventory()
+            }
+        }
         viewers.forEach {
             val player = Bukkit.getPlayer(it) ?: return@forEach
             player.openInventory.title = LegacyComponentSerializer.legacySection().serialize(newName)
-            Task.syncDelayed { -> player.updateInventory() }
+        }
+        Task.syncDelayed { ->
+            viewers.forEach {
+                val player = Bukkit.getPlayer(it) ?: return@forEach
+                if (!viewers.contains(player.uniqueId)) return@forEach
+                player.updateInventory()
+            }
         }
     }
 
