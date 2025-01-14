@@ -145,6 +145,7 @@ class PotManager : MyKoinComponent {
         if (!item.isSimilar(info.item)) {
             return item.amount
         }
+        val item = item.clone()
         var availableSpace = info.maxAmount - info.amount
         val neededSpace = item.amount - availableSpace
         if (neededSpace > 0 && info.isAutoUpgrading) {
