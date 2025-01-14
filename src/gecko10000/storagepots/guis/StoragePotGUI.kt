@@ -345,9 +345,11 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
     }
 
     private fun updateInventory(gui: InventoryGUI = this.inventory, isBeforeOpen: Boolean = false) {
+        val prevInfo = pot.info
         pot = potManager.getPot(pot.block) ?: return run {
             destroy()
         }
+        if (!isBeforeOpen && pot.info == prevInfo) return
         outputItemCount = pot.info.item?.let {
             min(pot.info.amount, it.maxStackSize.toLong()).toInt()
         } ?: 0
