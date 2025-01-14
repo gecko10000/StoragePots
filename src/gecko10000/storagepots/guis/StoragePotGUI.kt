@@ -152,7 +152,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
                         Placeholder.unparsed("amount", pot.info.amount.toString())
                     ).withDefaults(),
                     Component.empty(),
-                    parseMM("<yellow>Want to extract items out instead?"),
+                    parseMM("<yellow>Want to extract items instead?"),
                     parseMM("<yellow>Left click the pot block to take"),
                     parseMM("<yellow>out a stack of items."),
                 )
