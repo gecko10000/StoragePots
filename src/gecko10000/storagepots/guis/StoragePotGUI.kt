@@ -132,7 +132,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         }
         return ItemButton.create(item) { e ->
             if (!e.whoClicked.hasPermission("storagepots.toggleauto")) {
-                e.whoClicked.sendMessage(parseMM("<red>You don't have permission to toggle this!"))
+                e.whoClicked.sendMessage(plugin.lang.noPermissionMessage)
                 return@create
             }
             potManager.toggleAutoUpgrades(pot)
@@ -353,7 +353,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         outputItemCount = pot.info.item?.let {
             min(pot.info.amount, it.maxStackSize.toLong()).toInt()
         } ?: 0
-        if (!isBeforeOpen) changeTitle(plugin.config.potGUIName(pot.info))
+        if (!isBeforeOpen) changeTitle(plugin.lang.potGUIName(pot.info))
 
         gui.fill(0, INPUT_SLOT, GUI.FILLER)
         gui.fill(OUTPUT_SLOT + 1, SIZE, GUI.FILLER)
@@ -410,7 +410,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
     }
 
     private fun createInventory(): InventoryGUI {
-        val gui = InventoryGUI(Bukkit.createInventory(this, SIZE, plugin.config.potGUIName(pot.info)))
+        val gui = InventoryGUI(Bukkit.createInventory(this, SIZE, plugin.lang.potGUIName(pot.info)))
         gui.setOnClickOpenSlot { e -> handleIOClick(e) }
         gui.setOnDragOpenSlot { e -> e.isCancelled = true }
         gui.setOnDestroy { guiManager.remove(pot.block) }

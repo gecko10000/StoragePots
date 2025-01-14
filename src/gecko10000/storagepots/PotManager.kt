@@ -204,7 +204,7 @@ class PotManager : MyKoinComponent {
     private fun savePot(pot: Pot) {
         val decoratedPot = pot.block.getState(false) as? DecoratedPot
         if (decoratedPot == null) {
-            plugin.logger.warning("Pot at ${pot.block.location} could not be retrieved as a DecoratedPot")
+            plugin.logger.warning("Pot at ${pot.block.location} could not be retrieved as a DecoratedPot and failed to save.")
             return
         }
         val data = json.encodeToString(pot.info)
@@ -224,8 +224,8 @@ class PotManager : MyKoinComponent {
         val dataString = json.encodeToString(info)
         val item = ItemStack.of(Material.DECORATED_POT)
         item.editMeta {
-            it.displayName(plugin.config.potName)
-            it.lore(plugin.config.potLore(info))
+            it.displayName(plugin.lang.potItemName)
+            it.lore(plugin.lang.potItemLore(info))
             it.persistentDataContainer.set(potKey, PersistentDataType.STRING, dataString)
         }
         return item
