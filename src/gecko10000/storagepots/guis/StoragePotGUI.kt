@@ -13,7 +13,6 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import org.bukkit.Bukkit
 import org.bukkit.Material
-import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.ClickType
 import org.bukkit.event.inventory.InventoryClickEvent
@@ -39,6 +38,9 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         private const val AUTO_SLOT = 6
         private const val DESTROY_SLOT = 8
         private const val SIZE = 9
+
+        private const val LEFT_CLICK_UPGRADES = 1
+        private const val RIGHT_CLICK_UPGRADES = 10
     }
 
     private val plugin: StoragePots by inject()
@@ -47,8 +49,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
 
     private val viewers = mutableSetOf<UUID>()
     private val inventory: InventoryGUI
-    private val displayRandomizeKey = NamespacedKey(plugin, "random")
-    var outputItemCount by Delegates.notNull<Int>()
+    private var outputItemCount by Delegates.notNull<Int>()
 
     init {
         inventory = createInventory()
@@ -93,11 +94,15 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         item.editMeta {
             it.displayName(parseMM("<dark_aqua><b>Upgrade Max Storage"))
             it.lore(buildList {
-                add(
-                    MM.deserialize(
-                        "<dark_green>Exchange rate: <green>1</green> item per <green><amount></green> storage",
-                        Placeholder.unparsed("amount", plugin.config.storageUpgradeAmount.toString())
-                    ).withDefaults()
+                addAll(
+                    listOf(
+                        MM.deserialize(
+                            "<dark_green>Exchange rate: <green>1</green> item per <green><amount></green> storage",
+                            Placeholder.unparsed("amount", plugin.config.storageUpgradeAmount.toString())
+                        ).withDefaults(),
+                        parseMM("<dark_green><green>Left click</green> to upgrade <green>$LEFT_CLICK_UPGRADES</green> time"),
+                        parseMM("<dark_green><green>Right click</green> to upgrade <green>$RIGHT_CLICK_UPGRADES</green> times")
+                    )
                 )
                 this.lockedDisclaimer()
             })
@@ -105,8 +110,9 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
             it.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP)
             it.attributeModifiers = HashMultimap.create()
         }
-        return ItemButton.create(item) { _ ->
-            potManager.upgrade(pot, 1)
+        return ItemButton.create(item) { e ->
+            if (e.isLeftClick) potManager.upgrade(pot, LEFT_CLICK_UPGRADES)
+            if (e.isRightClick) potManager.upgrade(pot, RIGHT_CLICK_UPGRADES)
             updateInventory()
         }
     }
