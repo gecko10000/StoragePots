@@ -3,6 +3,7 @@
 package gecko10000.storagepots.config
 
 import gecko10000.geckolib.config.serializers.MMComponentSerializer
+import gecko10000.geckolib.extensions.name
 import gecko10000.geckolib.extensions.parseMM
 import gecko10000.storagepots.model.PotInfo
 import kotlinx.serialization.Serializable
@@ -38,11 +39,7 @@ data class Config(
             }
             if (potInfo.item != null) {
                 withAmounts.replaceText {
-                    val meta = potInfo.item.itemMeta
-                    val name = meta.customName() ?: if (meta.hasItemName()) meta.itemName() else Component.translatable(
-                        potInfo.item.translationKey()
-                    )
-                    it.matchLiteral("<item>").replacement(name)
+                    it.matchLiteral("<item>").replacement(potInfo.item.name())
                 }
             } else withAmounts
         }
