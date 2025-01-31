@@ -60,7 +60,6 @@ class ExternalInvListener : MyKoinComponent {
 
     fun hopperTick(pot: Pot) {
         val hoppers = getIncomingHoppers(pot.block)
-        if (hoppers.isEmpty()) return
         hoppers.forEach { tryInput(it.getState(false) as Hopper, pot) }
         val under = pot.block.getRelative(BlockFace.DOWN).getState(false) as? Hopper ?: return
         tryOutput(pot, under)
