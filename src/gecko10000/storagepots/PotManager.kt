@@ -154,7 +154,7 @@ class PotManager : MyKoinComponent {
             amount = 0,
         )
         pot.block.type = Material.AIR
-        pot.block.world.dropItem(pot.block.location.toCenterLocation(), potItem(potItemInfo))
+        pot.block.world.dropItem(pot.block.location.toCenterLocation(), potItem(potItemInfo)).velocity = Vector()
         guiManager.destroy(pot.block)
     }
 
