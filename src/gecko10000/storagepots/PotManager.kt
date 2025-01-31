@@ -187,13 +187,19 @@ class PotManager : MyKoinComponent {
     // Definitely has room if auto upgrading, might have room otherwise (need to check)
     fun hasRoom(pot: Pot, amount: Int) = pot.info.isAutoUpgrading || pot.info.amount + amount <= pot.info.maxAmount
 
+    fun isBlacklistedItem(item: ItemStack): Boolean {
+        val itemName = item.type.name
+        return itemName.endsWith("SHULKER_BOX") || itemName.endsWith("BUNDLE") || item.persistentDataContainer.has(
+            potKey
+        )
+    }
+
     // Returns the amount of items
     // left over from trying to add.
     fun tryAdd(pot: Pot, item: ItemStack, updateGUI: Boolean = true): Int {
         val pot = loadedPots[pot.block] ?: return item.amount
         if (item.isEmpty) return 0
-        val itemName = item.type.name
-        if (itemName.endsWith("SHULKER_BOX") || itemName.endsWith("BUNDLE") || item.persistentDataContainer.has(potKey)) {
+        if (isBlacklistedItem(item)) {
             return item.amount
         }
         var info = pot.info

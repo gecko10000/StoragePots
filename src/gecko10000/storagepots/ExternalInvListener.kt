@@ -78,7 +78,7 @@ class ExternalInvListener : MyKoinComponent {
         // Which is a storage pot
         val pot = potManager.getPot(destination) ?: return
         val itemFits = pot.info.item == null || e.item.isSimilar(pot.info.item)
-        if (!itemFits || !potManager.hasRoom(pot, e.item.amount)) {
+        if (!itemFits || !potManager.hasRoom(pot, e.item.amount) || potManager.isBlacklistedItem(e.item)) {
             e.isCancelled = true
             return
         }
