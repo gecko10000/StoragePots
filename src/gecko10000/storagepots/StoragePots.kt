@@ -35,7 +35,7 @@ class StoragePots : JavaPlugin(), MyKoinComponent {
     }
 
     override fun onDisable() {
-        potManager.saveAll()
+        potManager.saveAndClear()
         guiManager.shutdown()
     }
 

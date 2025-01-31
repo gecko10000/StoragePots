@@ -1,16 +1,18 @@
 package gecko10000.storagepots
 
+import gecko10000.geckolib.extensions.MM
 import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.model.Pot
 import gecko10000.storagepots.model.PotInfo
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.bukkit.Bukkit
-import org.bukkit.Chunk
-import org.bukkit.Material
-import org.bukkit.NamespacedKey
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+import org.bukkit.*
 import org.bukkit.block.Block
 import org.bukkit.block.DecoratedPot
+import org.bukkit.entity.Display
+import org.bukkit.entity.ItemDisplay
+import org.bukkit.entity.TextDisplay
 import org.bukkit.event.Event
 import org.bukkit.event.EventPriority
 import org.bukkit.event.block.*
@@ -19,13 +21,17 @@ import org.bukkit.event.world.ChunkLoadEvent
 import org.bukkit.event.world.ChunkUnloadEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
+import org.bukkit.util.Transformation
 import org.bukkit.util.Vector
+import org.joml.Quaternionf
+import org.joml.Vector3f
 import org.koin.core.component.inject
 import redempt.redlib.misc.EventListener
 import redempt.redlib.misc.Task
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 
 class PotManager : MyKoinComponent {
 
@@ -50,13 +56,7 @@ class PotManager : MyKoinComponent {
             if (e.isCancelled) return@EventListener
             val pot = loadedPots[e.block] ?: return@EventListener
             e.isCancelled = true
-            val inPot = pot.info.item ?: return@EventListener
-            val amountToDrop = min(pot.info.amount, (inPot.maxStackSize).toLong()).toInt()
-            if (amountToDrop == 0) return@EventListener
-            remove(pot, amountToDrop)
-            e.block.world.dropItem(e.block.location.add(0.5, 1.0, 0.5), inPot.asQuantity(amountToDrop)) {
-                it.velocity = Vector(0, 0, 0)
-            }
+            breakDropStack(pot)
         }
         EventListener(PlayerInteractEvent::class.java, EventPriority.HIGHEST) { e ->
             if (e.useInteractedBlock() == Event.Result.DENY) return@EventListener
@@ -75,22 +75,79 @@ class PotManager : MyKoinComponent {
         }, 0L, plugin.config.autosaveIntervalSeconds * 20L)
     }
 
+    private fun breakDropStack(pot: Pot) {
+        val inPot = pot.info.item ?: return
+        val amountToDrop = min(pot.info.amount, (inPot.maxStackSize).toLong()).toInt()
+        if (amountToDrop == 0) return
+        remove(pot, amountToDrop)
+        pot.block.world.dropItem(pot.block.location.add(0.5, 1.0, 0.5), inPot.asQuantity(amountToDrop)) {
+            it.velocity = Vector(0, 0, 0)
+        }
+    }
+
     private fun handlePiston(e: BlockPistonEvent, blocks: List<Block>) {
         if (blocks.any { it in loadedPots }) {
             e.isCancelled = true
         }
     }
 
+    private fun spawnItemDisplay(block: Block, info: PotInfo): ItemDisplay {
+        val display = block.world.spawn(block.location.add(0.5, 1.26, 0.5), ItemDisplay::class.java) {
+            it.isPersistent = false
+            it.transformation = Transformation(
+                Vector3f(0f),
+                Quaternionf(sqrt(2f) / 2, 0f, 0f, sqrt(2f) / 2),
+                Vector3f(0.25f),
+                Quaternionf()
+            )
+        }
+        display.update(info)
+        return display
+    }
+
+    private fun spawnTextDisplay(block: Block, info: PotInfo): TextDisplay {
+        val display = block.world.spawn(block.location.add(0.5, 1.4, 0.5), TextDisplay::class.java) {
+            it.isPersistent = false
+            it.billboard = Display.Billboard.CENTER
+            it.isShadowed = true
+            it.backgroundColor = Color.fromARGB(0, 0, 0, 0)
+        }
+        display.update(info)
+        return display
+    }
+
+    private fun ItemDisplay.update(info: PotInfo) {
+        this.isInvisible = info.amount == 0L && !info.isLocked
+        this.setItemStack(info.item)
+    }
+
+    private fun TextDisplay.update(info: PotInfo) {
+        val invisible = info.amount == 0L && !info.isLocked
+        if (invisible)
+            this.text(null)
+        else
+            this.text(
+                MM.deserialize(
+                    "<b><amount>",
+                    Placeholder.unparsed("amount", info.amount.toString()),
+                    //Placeholder.component("item", item.name()),
+                )
+            )
+    }
+
     private fun place(item: ItemStack, block: Block) {
         val infoString = item.persistentDataContainer.get(potKey, PersistentDataType.STRING) ?: return
         val potInfo = json.decodeFromString<PotInfo>(infoString)
-        val pot = Pot(block, potInfo)
+        val pot = Pot(block, potInfo, spawnItemDisplay(block, potInfo), spawnTextDisplay(block, potInfo))
         loadedPots[block] = pot
         savePot(pot)
     }
 
     fun `break`(pot: Pot) {
         val pot = loadedPots.remove(pot.block) ?: return
+        pot.itemDisplay.remove()
+        pot.textDisplay.remove()
+        breakDropStack(pot)
         val item = if (pot.info.isLocked) pot.info.item else null
         val potItemInfo = pot.info.copy(
             item = item,
@@ -112,7 +169,7 @@ class PotManager : MyKoinComponent {
         infoString ?: return // Not a storage pot, ignore.
         val info = json.decodeFromString<PotInfo>(infoString)
         val block = pot.block
-        loadedPots[block] = Pot(block, info)
+        loadedPots[block] = Pot(block, info, spawnItemDisplay(block, info), spawnTextDisplay(block, info))
     }
 
     private fun unloadChunk(chunk: Chunk) {
@@ -121,6 +178,7 @@ class PotManager : MyKoinComponent {
             .forEach {
                 val pot = loadedPots.remove(it)
                 if (pot != null) {
+                    pot.itemDisplay.remove()
                     savePot(pot)
                 }
             }
@@ -195,9 +253,12 @@ class PotManager : MyKoinComponent {
     private fun updatePot(pot: Pot, newInfo: PotInfo, updateGUI: Boolean = true): Pot {
         val newPot = pot.copy(info = newInfo)
         loadedPots[newPot.block] = newPot
+
         if (updateGUI) {
             guiManager.update(newPot.block)
         }
+        newPot.itemDisplay.update(newInfo)
+        newPot.textDisplay.update(newInfo)
         return newPot
     }
 
@@ -212,8 +273,13 @@ class PotManager : MyKoinComponent {
         decoratedPot.update()
     }
 
-    fun saveAll() {
+    fun saveAndClear() {
         loadedPots.values.forEach(this::savePot)
+        loadedPots.values.forEach {
+            it.itemDisplay.remove()
+            it.textDisplay.remove()
+        }
+        loadedPots.clear()
     }
 
     fun getPot(block: Block): Pot? = loadedPots[block]
