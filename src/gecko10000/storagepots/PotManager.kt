@@ -94,12 +94,6 @@ class PotManager : MyKoinComponent {
     private fun spawnItemDisplay(block: Block, info: PotInfo): ItemDisplay {
         val display = block.world.spawn(block.location.add(0.5, 1.26, 0.5), ItemDisplay::class.java) {
             it.isPersistent = false
-            it.transformation = Transformation(
-                Vector3f(0f),
-                Quaternionf(sqrt(2f) / 2, 0f, 0f, sqrt(2f) / 2),
-                Vector3f(0.25f),
-                Quaternionf()
-            )
         }
         display.update(info)
         return display
@@ -119,6 +113,15 @@ class PotManager : MyKoinComponent {
     private fun ItemDisplay.update(info: PotInfo) {
         this.isInvisible = info.amount == 0L && !info.isLocked
         this.setItemStack(info.item)
+        val isBlock = info.item?.type?.isBlock == true
+        val sqrt = sqrt(2f) / 2
+        val rotation = if (!isBlock) Quaternionf(sqrt, 0f, 0f, sqrt) else Quaternionf()
+        this.transformation = Transformation(
+            Vector3f(0f),
+            rotation,
+            Vector3f(0.25f),
+            Quaternionf()
+        )
     }
 
     private fun TextDisplay.update(info: PotInfo) {
