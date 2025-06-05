@@ -16,6 +16,7 @@ import org.bukkit.entity.TextDisplay
 import org.bukkit.event.Event
 import org.bukkit.event.EventPriority
 import org.bukkit.event.block.*
+import org.bukkit.event.entity.EntityExplodeEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.world.ChunkLoadEvent
 import org.bukkit.event.world.ChunkUnloadEvent
@@ -69,6 +70,8 @@ class PotManager : MyKoinComponent {
         }
         EventListener(BlockPistonExtendEvent::class.java, EventPriority.LOWEST) { e -> handlePiston(e, e.blocks) }
         EventListener(BlockPistonRetractEvent::class.java, EventPriority.LOWEST) { e -> handlePiston(e, e.blocks) }
+        EventListener(BlockExplodeEvent::class.java, EventPriority.LOWEST) { e -> handleExplosion(e.blockList()) }
+        EventListener(EntityExplodeEvent::class.java, EventPriority.LOWEST) { e -> handleExplosion(e.blockList()) }
 
         Task.syncRepeating({ ->
             loadedPots.values.forEach(this::savePot)
@@ -88,6 +91,12 @@ class PotManager : MyKoinComponent {
     private fun handlePiston(e: BlockPistonEvent, blocks: List<Block>) {
         if (blocks.any { it in loadedPots }) {
             e.isCancelled = true
+        }
+    }
+
+    private fun handleExplosion(blocks: MutableList<Block>) {
+        blocks.removeIf {
+            it in loadedPots
         }
     }
 
@@ -275,6 +284,7 @@ class PotManager : MyKoinComponent {
         val decoratedPot = pot.block.getState(false) as? DecoratedPot
         if (decoratedPot == null) {
             plugin.logger.warning("Pot at ${pot.block.location} could not be retrieved as a DecoratedPot and failed to save.")
+            plugin.logger.warning("Data: ${pot.info}")
             return
         }
         val data = json.encodeToString(pot.info)

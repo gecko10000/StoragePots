@@ -43,7 +43,7 @@ repositories {
 
 dependencies {
     compileOnly(kotlin("stdlib", version = "2.0.21"))
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.5-R0.1-SNAPSHOT")
     compileOnly("gecko10000.geckolib:GeckoLib:1.0-SNAPSHOT")
     compileOnly("com.github.Redempt:RedLib:6.6.1")
 }
