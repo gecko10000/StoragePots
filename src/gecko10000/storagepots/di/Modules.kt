@@ -7,7 +7,7 @@ import org.koin.dsl.module
 fun pluginModules(plugin: StoragePots) = module {
     single { plugin }
     single(createdAtStart = true) { PotManager() }
-    single(createdAtStart = true) { CommandHandler() }
+    single(createdAtStart = true) { CommandHandler().also { it.register() } }
     single(createdAtStart = true) { GUIManager() }
     single(createdAtStart = true) { ExternalInvListener() }
     single {

@@ -1,13 +1,18 @@
 package gecko10000.storagepots.guis
 
 import com.google.common.collect.HashMultimap
-import gecko10000.geckolib.GUI
 import gecko10000.geckolib.extensions.*
+import gecko10000.geckolib.inventorygui.GUI
+import gecko10000.geckolib.inventorygui.InventoryGUI
+import gecko10000.geckolib.inventorygui.ItemButton
+import gecko10000.geckolib.misc.EventListener
+import gecko10000.geckolib.misc.Task
 import gecko10000.storagepots.GUIManager
 import gecko10000.storagepots.PotManager
 import gecko10000.storagepots.StoragePots
 import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.model.Pot
+import io.papermc.paper.datacomponent.DataComponentTypes
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
@@ -20,10 +25,6 @@ import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.inventory.*
 import org.koin.core.component.inject
-import redempt.redlib.inventorygui.InventoryGUI
-import redempt.redlib.inventorygui.ItemButton
-import redempt.redlib.misc.EventListener
-import redempt.redlib.misc.Task
 import java.util.*
 import kotlin.math.ceil
 import kotlin.math.min
@@ -90,7 +91,8 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
     }
 
     private fun upgradeButton(): ItemButton {
-        val item = ItemStack.of(Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE)
+        val item = ItemStack.of(Material.PAPER)
+        item.setData(DataComponentTypes.ITEM_MODEL, Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE.key())
         item.editMeta {
             it.displayName(parseMM("<dark_aqua><b>Upgrade Max Storage"))
             it.lore(buildList {

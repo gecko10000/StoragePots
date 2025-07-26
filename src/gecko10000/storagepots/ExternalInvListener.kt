@@ -1,6 +1,8 @@
 package gecko10000.storagepots
 
 import gecko10000.geckolib.extensions.isEmpty
+import gecko10000.geckolib.misc.EventListener
+import gecko10000.geckolib.misc.Task
 import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.model.Pot
 import org.bukkit.Material
@@ -9,8 +11,6 @@ import org.bukkit.block.data.Directional
 import org.bukkit.event.inventory.InventoryMoveItemEvent
 import org.bukkit.inventory.Inventory
 import org.koin.core.component.inject
-import redempt.redlib.misc.EventListener
-import redempt.redlib.misc.Task
 import kotlin.math.min
 
 class ExternalInvListener : MyKoinComponent {

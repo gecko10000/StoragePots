@@ -1,6 +1,8 @@
 package gecko10000.storagepots
 
 import gecko10000.geckolib.extensions.MM
+import gecko10000.geckolib.misc.EventListener
+import gecko10000.geckolib.misc.Task
 import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.model.Pot
 import gecko10000.storagepots.model.PotInfo
@@ -27,8 +29,6 @@ import org.bukkit.util.Vector
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.koin.core.component.inject
-import redempt.redlib.misc.EventListener
-import redempt.redlib.misc.Task
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
@@ -280,16 +280,17 @@ class PotManager : MyKoinComponent {
         return newPot
     }
 
-    private fun savePot(pot: Pot) {
+    // Returns whether the pot was saved successfully
+    private fun savePot(pot: Pot): Boolean {
         val decoratedPot = pot.block.getState(false) as? DecoratedPot
         if (decoratedPot == null) {
-            plugin.logger.warning("Pot at ${pot.block.location} could not be retrieved as a DecoratedPot and failed to save.")
-            plugin.logger.warning("Data: ${pot.info}")
-            return
+            plugin.logger.warning("Pot at ${pot.block.location} was missing and couldn't save: ${pot.info}.")
+            return false
         }
         val data = json.encodeToString(pot.info)
         decoratedPot.persistentDataContainer.set(potKey, PersistentDataType.STRING, data)
         decoratedPot.update()
+        return true
     }
 
     fun saveAndClear() {

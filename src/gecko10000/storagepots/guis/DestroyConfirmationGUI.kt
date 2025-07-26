@@ -1,9 +1,11 @@
 package gecko10000.storagepots.guis
 
-import gecko10000.geckolib.GUI
 import gecko10000.geckolib.extensions.MM
 import gecko10000.geckolib.extensions.parseMM
 import gecko10000.geckolib.extensions.withDefaults
+import gecko10000.geckolib.inventorygui.GUI
+import gecko10000.geckolib.inventorygui.InventoryGUI
+import gecko10000.geckolib.inventorygui.ItemButton
 import gecko10000.storagepots.GUIManager
 import gecko10000.storagepots.PotManager
 import gecko10000.storagepots.di.MyKoinComponent
@@ -15,8 +17,6 @@ import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryType
 import org.bukkit.inventory.ItemStack
 import org.koin.core.component.inject
-import redempt.redlib.inventorygui.InventoryGUI
-import redempt.redlib.inventorygui.ItemButton
 
 class DestroyConfirmationGUI(player: Player, private val pot: Pot) : GUI(player), MyKoinComponent {
 

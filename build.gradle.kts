@@ -5,6 +5,7 @@ plugins {
     kotlin("plugin.serialization") version "1.4.20"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("de.eldoria.plugin-yml.bukkit") version "0.6.0"
+    kotlin("kapt") version "2.2.0"
 }
 
 sourceSets {
@@ -38,14 +39,15 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
-    maven("https://redempt.dev/")
+    maven("https://eldonexus.de/repository/maven-public/")
 }
 
 dependencies {
     compileOnly(kotlin("stdlib", version = "2.0.21"))
-    compileOnly("io.papermc.paper:paper-api:1.21.5-R0.1-SNAPSHOT")
-    compileOnly("gecko10000.geckolib:GeckoLib:1.0-SNAPSHOT")
-    compileOnly("com.github.Redempt:RedLib:6.6.1")
+    compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly("gecko10000.geckolib:GeckoLib:1.1")
+    compileOnly("net.strokkur", "strokk-commands-annotations", "1.2.4-SNAPSHOT")
+    kapt("net.strokkur", "strokk-commands-processor", "1.2.4-SNAPSHOT")
 }
 
 kotlin {
