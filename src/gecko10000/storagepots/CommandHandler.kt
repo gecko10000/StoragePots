@@ -6,10 +6,7 @@ import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.model.PotInfo
 import io.papermc.paper.plugin.lifecycle.event.handler.LifecycleEventHandler
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
-import net.strokkur.commands.annotations.Aliases
-import net.strokkur.commands.annotations.Command
-import net.strokkur.commands.annotations.Executes
-import net.strokkur.commands.annotations.Permission
+import net.strokkur.commands.annotations.*
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.koin.core.component.inject
@@ -38,9 +35,7 @@ class CommandHandler : MyKoinComponent {
         sender.sendMessage(parseMM("<green>Configs reloaded."))
     }
 
-    @Executes("give")
-    @Permission("storagepots.give")
-    fun give(sender: CommandSender, target: Player) {
+    private fun give(sender: CommandSender, target: Player) {
         ItemUtils.give(
             target, potManager.potItem(
                 PotInfo(
@@ -53,6 +48,17 @@ class CommandHandler : MyKoinComponent {
             )
         )
         sender.sendMessage(parseMM("<green>Gave ${target.name} a storage pot."))
+    }
+
+    @Executes("give")
+    fun giveSelf(sender: CommandSender, @Executor player: Player) {
+        give(sender, player)
+    }
+
+    @Executes("give")
+    @Permission("storagepots.give")
+    fun giveOther(sender: CommandSender, target: Player) {
+        give(sender, target)
     }
 
 }
