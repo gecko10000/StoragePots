@@ -14,4 +14,5 @@ data class Config(
     val storageUpgradeAmount: Int = 1,
     val hopperTransferAmount: Int = 1,
     val hopperTransferCooldown: Int = 8,
+    val dropCooldownTicks: Long = 5,
 )

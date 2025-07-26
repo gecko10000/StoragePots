@@ -6,7 +6,10 @@ import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.model.PotInfo
 import io.papermc.paper.plugin.lifecycle.event.handler.LifecycleEventHandler
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
-import net.strokkur.commands.annotations.*
+import net.strokkur.commands.annotations.Aliases
+import net.strokkur.commands.annotations.Command
+import net.strokkur.commands.annotations.Executes
+import net.strokkur.commands.annotations.Permission
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.koin.core.component.inject
@@ -51,8 +54,13 @@ class CommandHandler : MyKoinComponent {
     }
 
     @Executes("give")
-    fun giveSelf(sender: CommandSender, @Executor player: Player) {
-        give(sender, player)
+    @Permission("storagepots.give")
+    fun giveSelf(sender: CommandSender) {
+        if (sender !is Player) {
+            sender.sendRichMessage("<red>Specify a player.")
+            return
+        }
+        give(sender, sender)
     }
 
     @Executes("give")

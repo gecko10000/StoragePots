@@ -307,6 +307,18 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         }
     }
 
+    private val nextDropTick = mutableMapOf<UUID, Long>()
+
+    private fun handleDrop(e: InventoryClickEvent, amount: Int) {
+        if (e.slot != OUTPUT_SLOT) return
+        val currentTick = plugin.server.currentTick
+        val uuid = e.whoClicked.uniqueId
+        if (nextDropTick.getOrDefault(uuid, 0) > currentTick) return
+        e.whoClicked.dropItem(pot.info.item!!.asQuantity(amount))
+        potManager.remove(pot, amount, updateGUI = false)
+        nextDropTick[uuid] = currentTick + plugin.config.dropCooldownTicks
+    }
+
     private fun handleIOClick(e: InventoryClickEvent) {
         e.isCancelled = true
         when (e.click) {
@@ -316,6 +328,8 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
             ClickType.SHIFT_LEFT -> handleShiftClick(e)
             ClickType.SHIFT_RIGHT -> handleShiftClick(e)
             ClickType.SWAP_OFFHAND -> handleOffhandSwap(e)
+            ClickType.DROP -> handleDrop(e, 1)
+            ClickType.CONTROL_DROP -> handleDrop(e, min(pot.info.item?.maxStackSize ?: 0, pot.info.amount.toInt()))
             else -> {}
         }
         updateInventory()
