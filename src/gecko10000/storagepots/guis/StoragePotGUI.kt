@@ -105,7 +105,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
 
     private fun withdrawAll(player: Player) {
         val item = pot.info.item!!
-        val amountToAdd = min(pot.info.amount.toInt(), 99 * 36) // er...
+        val amountToAdd = min(pot.info.amount.toInt(), 6400) // vanilla limits /give to 6400 as well...
         val numFullStacks = amountToAdd / item.maxStackSize
         val fullStack = item.asQuantity(item.maxStackSize)
         var allStacks = List(numFullStacks) { fullStack }
