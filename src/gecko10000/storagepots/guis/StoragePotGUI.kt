@@ -113,7 +113,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         if (leftoverStackSize != 0) {
             allStacks = allStacks.plus(item.asQuantity(leftoverStackSize))
         }
-        val leftovers = player.give(allStacks, false).leftovers()
+        val leftovers = player.inventory.addItem(*allStacks.toTypedArray()).values
         val notGiven = leftovers.sumOf { it.amount }
         val given = amountToAdd - notGiven
         potManager.remove(pot, given)
