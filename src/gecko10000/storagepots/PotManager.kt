@@ -29,6 +29,7 @@ import org.bukkit.util.Vector
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.koin.core.component.inject
+import java.util.*
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
@@ -57,7 +58,7 @@ class PotManager : MyKoinComponent {
             if (e.isCancelled) return@EventListener
             val pot = loadedPots[e.block] ?: return@EventListener
             e.isCancelled = true
-            breakDropStack(pot)
+            breakDropStack(pot, e.player.uniqueId)
         }
         EventListener(PlayerInteractEvent::class.java, EventPriority.HIGHEST) { e ->
             if (e.useInteractedBlock() == Event.Result.DENY) return@EventListener
@@ -78,10 +79,15 @@ class PotManager : MyKoinComponent {
         }, 0L, plugin.config.autosaveIntervalSeconds * 20L)
     }
 
-    private fun breakDropStack(pot: Pot) {
+    private val nextDropTick = mutableMapOf<UUID, Long>()
+
+    private fun breakDropStack(pot: Pot, playerId: UUID) {
         val inPot = pot.info.item ?: return
         val amountToDrop = min(pot.info.amount, (inPot.maxStackSize).toLong()).toInt()
         if (amountToDrop == 0) return
+        val currentTick = plugin.server.currentTick
+        if (nextDropTick.getOrDefault(playerId, 0) > currentTick) return
+        nextDropTick[playerId] = currentTick + plugin.config.dropCooldownTicks
         remove(pot, amountToDrop)
         pot.block.world.dropItem(pot.block.location.add(0.5, 1.0, 0.5), inPot.asQuantity(amountToDrop)) {
             it.velocity = Vector(0, 0, 0)
@@ -159,7 +165,6 @@ class PotManager : MyKoinComponent {
         val pot = loadedPots.remove(pot.block) ?: return
         pot.itemDisplay.remove()
         pot.textDisplay.remove()
-        breakDropStack(pot)
         val item = if (pot.info.isLocked) pot.info.item else null
         val potItemInfo = pot.info.copy(
             item = item,
