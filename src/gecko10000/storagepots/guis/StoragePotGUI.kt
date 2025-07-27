@@ -1,11 +1,11 @@
 package gecko10000.storagepots.guis
 
-import com.google.common.collect.HashMultimap
 import gecko10000.geckolib.extensions.*
 import gecko10000.geckolib.inventorygui.GUI
 import gecko10000.geckolib.inventorygui.InventoryGUI
 import gecko10000.geckolib.inventorygui.ItemButton
 import gecko10000.geckolib.misc.EventListener
+import gecko10000.geckolib.misc.ItemUtils
 import gecko10000.geckolib.misc.Task
 import gecko10000.storagepots.GUIManager
 import gecko10000.storagepots.PotManager
@@ -23,7 +23,10 @@ import org.bukkit.event.inventory.ClickType
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.player.PlayerQuitEvent
-import org.bukkit.inventory.*
+import org.bukkit.inventory.Inventory
+import org.bukkit.inventory.InventoryHolder
+import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.PlayerInventory
 import org.koin.core.component.inject
 import java.util.*
 import kotlin.math.ceil
@@ -33,6 +36,7 @@ import kotlin.properties.Delegates
 class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
 
     companion object {
+        private const val DEPOSIT_ALL_SLOT = 1
         private const val INPUT_SLOT = 2
         private const val OUTPUT_SLOT = 3
         private const val UPGRADE_SLOT = 5
@@ -90,6 +94,53 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         }
     }
 
+    private fun depositAll(player: Player) {
+        val item = pot.info.item!!
+        val countInInv = ItemUtils.count(player.inventory, item)
+        //val countInInv = ItemUtils.countAndRemove(player.inventory, item)
+        val leftover = potManager.tryAdd(pot, item, countInInv)
+        val toRemove = countInInv - leftover
+        ItemUtils.remove(player.inventory, item, toRemove)
+    }
+
+    private fun withdrawAll(player: Player) {
+        val item = pot.info.item!!
+        val amountToAdd = min(pot.info.amount.toInt(), 99 * 36) // er...
+        val numFullStacks = amountToAdd / item.maxStackSize
+        val fullStack = item.asQuantity(item.maxStackSize)
+        var allStacks = List(numFullStacks) { fullStack }
+        val leftoverStackSize = amountToAdd - (numFullStacks * item.maxStackSize)
+        if (leftoverStackSize != 0) {
+            allStacks = allStacks.plus(item.asQuantity(leftoverStackSize))
+        }
+        val leftovers = player.give(allStacks, false).leftovers()
+        val notGiven = leftovers.sumOf { it.amount }
+        val given = amountToAdd - notGiven
+        potManager.remove(pot, given)
+    }
+
+    private fun quickMoveButton(): ItemButton? {
+        pot.info.item ?: return null
+        val item = ItemStack.of(Material.HOPPER)
+        item.editMeta {
+            it.displayName(parseMM("<dark_aqua><b>Quick Move"))
+            it.lore(
+                listOf(
+                    parseMM("<dark_green><green>Left click</green> to deposit as much as possible."),
+                    parseMM("<dark_green><green>Right click</green> to withdraw as much as possible.")
+                )
+            )
+        }
+        return ItemButton.create(item) { e ->
+            if (e.isLeftClick) {
+                depositAll(e.whoClicked as Player)
+            }
+            if (e.isRightClick) {
+                withdrawAll(e.whoClicked as Player)
+            }
+        }
+    }
+
     private fun upgradeButton(): ItemButton {
         val item = ItemStack.of(Material.PAPER)
         item.setData(DataComponentTypes.ITEM_MODEL, Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE.key())
@@ -108,9 +159,6 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
                 )
                 this.lockedDisclaimer()
             })
-            // Hides attributes
-            it.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP)
-            it.attributeModifiers = HashMultimap.create()
         }
         return ItemButton.create(item) { e ->
             if (e.isLeftClick) potManager.upgrade(pot, LEFT_CLICK_UPGRADES)
@@ -384,6 +432,15 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         gui.inventory.setItem(OUTPUT_SLOT, outputItem)
         gui.setReturnsItems(false)
 
+        val quickMoveButton = quickMoveButton()
+        if (quickMoveButton != null) {
+            gui.addButton(DEPOSIT_ALL_SLOT, quickMoveButton)
+        } else {
+            gui.getButton(DEPOSIT_ALL_SLOT)?.let {
+                gui.removeButton(it)
+                gui.inventory.setItem(DEPOSIT_ALL_SLOT, GUI.FILLER)
+            }
+        }
         gui.addButton(UPGRADE_SLOT, upgradeButton())
         gui.addButton(AUTO_SLOT, autoUpgradeButton())
         gui.addButton(DESTROY_SLOT, destroyButton())

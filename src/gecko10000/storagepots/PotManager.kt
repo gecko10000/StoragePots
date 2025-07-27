@@ -201,48 +201,52 @@ class PotManager : MyKoinComponent {
 
     fun isBlacklistedItem(item: ItemStack): Boolean {
         val itemName = item.type.name
-        return itemName.endsWith("SHULKER_BOX") || itemName.endsWith("BUNDLE") || item.persistentDataContainer.has(
-            potKey
-        )
+        return itemName.endsWith("SHULKER_BOX")
+                || itemName.endsWith("BUNDLE")
+                || item.persistentDataContainer.has(potKey)
+    }
+
+    fun tryAdd(pot: Pot, item: ItemStack, updateGUI: Boolean = true): Int {
+        return tryAdd(pot, item, item.amount, updateGUI)
     }
 
     // Returns the amount of items
     // left over from trying to add.
-    fun tryAdd(pot: Pot, item: ItemStack, updateGUI: Boolean = true): Int {
+    fun tryAdd(pot: Pot, item: ItemStack, amount: Int, updateGUI: Boolean = true): Int {
         val pot = loadedPots[pot.block] ?: return item.amount
         if (item.isEmpty) return 0
         if (isBlacklistedItem(item)) {
-            return item.amount
+            return amount
         }
         var info = pot.info
         if (info.item == null) {
             info = info.copy(item = item.asQuantity(1))
         }
         if (!item.isSimilar(info.item)) {
-            return item.amount
+            return amount
         }
-        val item = item.clone()
+        var amount = amount
         var availableSpace = info.maxAmount - info.amount
-        val neededSpace = item.amount - availableSpace
+        val neededSpace = amount - availableSpace
         if (neededSpace > 0 && info.isAutoUpgrading) {
             // Perform upgrade
             val upgradeIncrease = plugin.config.storageUpgradeAmount
             val diffFromUpgrade = upgradeIncrease + 1
             val numUpgrades = ceil(neededSpace / diffFromUpgrade.toDouble()).toInt()
 
-            item.amount -= numUpgrades
+            amount -= numUpgrades
             info = info.copy(
                 maxAmount = info.maxAmount + numUpgrades * upgradeIncrease,
                 isLocked = true,
             )
             availableSpace = info.maxAmount - info.amount
         }
-        val toInsert = min(item.amount.toLong(), availableSpace)
+        val toInsert = min(amount.toLong(), availableSpace)
         info = info.copy(
             amount = info.amount + toInsert,
         )
         updatePot(pot, info, updateGUI)
-        return item.amount - toInsert.toInt()
+        return amount - toInsert.toInt()
     }
 
     fun remove(pot: Pot, amount: Int, updateGUI: Boolean = true) {
