@@ -201,6 +201,7 @@ class PotManager : MyKoinComponent {
                 val pot = loadedPots.remove(it)
                 if (pot != null) {
                     pot.itemDisplay.remove()
+                    pot.textDisplay.remove()
                     savePot(pot)
                 }
             }
