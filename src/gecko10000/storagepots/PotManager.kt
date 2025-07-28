@@ -37,6 +37,10 @@ import kotlin.math.sqrt
 
 class PotManager : MyKoinComponent {
 
+    companion object {
+        lateinit var instance: PotManager
+    }
+
     private val plugin: StoragePots by inject()
     private val guiManager: GUIManager by inject()
     private val json: Json by inject()
@@ -45,6 +49,7 @@ class PotManager : MyKoinComponent {
     private val loadedPots: MutableMap<Block, Pot> = mutableMapOf()
 
     init {
+        instance = this
         Bukkit.getWorlds()
             .flatMap { it.loadedChunks.toList() }
             .forEach(this::loadChunk)

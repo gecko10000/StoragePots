@@ -2,6 +2,8 @@ import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
 
 plugins {
     kotlin("jvm") version "2.0.21"
+    id("java-library")
+    id("maven-publish")
     kotlin("plugin.serialization") version "1.4.20"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("de.eldoria.plugin-yml.bukkit") version "0.6.0"
@@ -56,7 +58,16 @@ kotlin {
 
 tasks {
     build {
-        dependsOn(shadowJar)
+        dependsOn(publishToMavenLocal, shadowJar)
+    }
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("local") {
+            from(components["java"])
+            artifactId = "StoragePots"
+        }
     }
 }
 
