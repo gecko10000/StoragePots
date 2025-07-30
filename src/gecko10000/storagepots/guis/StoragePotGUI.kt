@@ -108,7 +108,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         val amountToAdd = min(pot.info.amount.toInt(), 6400) // vanilla limits /give to 6400 as well...
         val numFullStacks = amountToAdd / item.maxStackSize
         val fullStack = item.asQuantity(item.maxStackSize)
-        var allStacks = List(numFullStacks) { fullStack }
+        var allStacks = List(numFullStacks) { fullStack.clone() }
         val leftoverStackSize = amountToAdd - (numFullStacks * item.maxStackSize)
         if (leftoverStackSize != 0) {
             allStacks = allStacks.plus(item.asQuantity(leftoverStackSize))
