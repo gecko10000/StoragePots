@@ -6,10 +6,12 @@ import gecko10000.geckolib.misc.Task
 import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.model.Pot
 import org.bukkit.Material
+import org.bukkit.NamespacedKey
 import org.bukkit.block.*
 import org.bukkit.block.data.Directional
 import org.bukkit.event.inventory.InventoryMoveItemEvent
 import org.bukkit.inventory.Inventory
+import org.bukkit.persistence.PersistentDataHolder
 import org.koin.core.component.inject
 import kotlin.math.min
 
@@ -40,10 +42,18 @@ class ExternalInvListener : MyKoinComponent {
         potManager.remove(pot, outputAmount - leftover)
     }
 
+    private val chunkHopperKey = NamespacedKey("geckochunkhoppers", "chunkhopper")
+    private fun isChunkHopper(block: Block): Boolean {
+        val state = block.getState(false)
+        if (state !is PersistentDataHolder) return false
+        return state.persistentDataContainer.has(chunkHopperKey)
+    }
+
     private fun validateHopper(block: Block, direction: BlockFace): Block? {
         val relative = block.getRelative(direction)
         val relativeData = relative.blockData as? org.bukkit.block.data.type.Hopper ?: return null
         if (relativeData.facing != direction.oppositeFace) return null
+        if (isChunkHopper(relative)) return null // Let GeckoChunkHoppers handle moving multiple items
         return relative
     }
 
@@ -99,6 +109,7 @@ class ExternalInvListener : MyKoinComponent {
             potManager.getAll().forEach(this::hopperTick)
         }, 0L, plugin.config.hopperTransferCooldown.toLong())
         EventListener(InventoryMoveItemEvent::class.java) { e ->
+            if (e.isCancelled) return@EventListener
             val holder = e.source.getHolder(false)
             if (holder is Dropper) {
                 handleDropper(holder, e)

@@ -224,7 +224,7 @@ class PotManager : MyKoinComponent {
     // Returns the amount of items
     // left over from trying to add.
     fun tryAdd(pot: Pot, item: ItemStack, amount: Int, updateGUI: Boolean = true): Int {
-        val pot = loadedPots[pot.block] ?: return item.amount
+        val pot = loadedPots[pot.block] ?: return amount
         if (item.isEmpty) return 0
         if (isBlacklistedItem(item)) {
             return amount
