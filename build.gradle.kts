@@ -1,13 +1,13 @@
 import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
 
 plugins {
-    kotlin("jvm") version "2.0.21"
+    kotlin("jvm") version "2.3.10"
     id("java-library")
     id("maven-publish")
-    kotlin("plugin.serialization") version "1.4.20"
+    kotlin("plugin.serialization") version "2.3.10"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("de.eldoria.plugin-yml.bukkit") version "0.6.0"
-    kotlin("kapt") version "2.2.0"
+    kotlin("kapt") version "2.3.10"
 }
 
 sourceSets {
@@ -45,11 +45,11 @@ repositories {
 }
 
 dependencies {
-    compileOnly(kotlin("stdlib", version = "2.0.21"))
-    compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly(kotlin("stdlib", version = "2.3.10"))
+    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("gecko10000.geckolib:GeckoLib:1.1")
-    compileOnly("net.strokkur", "strokk-commands-annotations", "1.2.4-SNAPSHOT")
-    kapt("net.strokkur", "strokk-commands-processor", "1.2.4-SNAPSHOT")
+    compileOnly("net.strokkur.commands:annotations-paper:2.0.2")
+    kapt("net.strokkur.commands:processor-paper:2.0.2")
 }
 
 kotlin {

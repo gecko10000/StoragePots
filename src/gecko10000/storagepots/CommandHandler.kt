@@ -6,10 +6,10 @@ import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.model.PotInfo
 import io.papermc.paper.plugin.lifecycle.event.handler.LifecycleEventHandler
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
-import net.strokkur.commands.annotations.Aliases
-import net.strokkur.commands.annotations.Command
-import net.strokkur.commands.annotations.Executes
-import net.strokkur.commands.annotations.Permission
+import net.strokkur.commands.Aliases
+import net.strokkur.commands.Command
+import net.strokkur.commands.Executes
+import net.strokkur.commands.permission.Permission
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.koin.core.component.inject
