@@ -260,7 +260,8 @@ class PotManager : MyKoinComponent {
         return amount - toInsert.toInt()
     }
 
-    fun remove(pot: Pot, amount: Int, updateGUI: Boolean = true) {
+    fun remove(pot: Pot, amount: Number, updateGUI: Boolean = true) {
+        val amount = amount.toLong()
         val pot = loadedPots[pot.block] ?: return
         val newAmount = max(pot.info.amount - amount, 0)
         val item = if (newAmount == 0L && !pot.info.isLocked) null else pot.info.item?.clone()
@@ -281,6 +282,10 @@ class PotManager : MyKoinComponent {
 
     fun toggleAutoUpgrades(pot: Pot) {
         updatePot(pot, pot.info.copy(isAutoUpgrading = !pot.info.isAutoUpgrading))
+    }
+
+    fun toggleSellAll(pot: Pot) {
+        updatePot(pot, pot.info.copy(isSellButtonEnabled = !pot.info.isSellButtonEnabled))
     }
 
     private fun updatePot(pot: Pot, newInfo: PotInfo, updateGUI: Boolean = true): Pot {

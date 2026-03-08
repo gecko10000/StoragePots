@@ -5,6 +5,7 @@ import gecko10000.geckolib.inventorygui.GUI
 import gecko10000.geckolib.inventorygui.InventoryGUI
 import gecko10000.geckolib.inventorygui.ItemButton
 import gecko10000.geckolib.misc.EventListener
+import gecko10000.geckolib.misc.FormatUtils.formatMoney
 import gecko10000.geckolib.misc.ItemUtils
 import gecko10000.geckolib.misc.Task
 import gecko10000.storagepots.GUIManager
@@ -13,6 +14,7 @@ import gecko10000.storagepots.StoragePots
 import gecko10000.storagepots.di.MyKoinComponent
 import gecko10000.storagepots.model.Pot
 import io.papermc.paper.datacomponent.DataComponentTypes
+import me.gypopo.economyshopgui.api.EconomyShopGUIHook
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
@@ -41,6 +43,7 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         private const val OUTPUT_SLOT = 3
         private const val UPGRADE_SLOT = 5
         private const val AUTO_SLOT = 6
+        private const val SELL_ALL_SLOT = 7
         private const val DESTROY_SLOT = 8
         private const val SIZE = 9
 
@@ -52,6 +55,8 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
     private val potManager: PotManager by inject()
     private val guiManager: GUIManager by inject()
 
+    private val isESGUIEnabled =
+        plugin.server.pluginManager.isPluginEnabled("EconomyShopGUI") || plugin.server.pluginManager.isPluginEnabled("EconomyShopGUI-Premium")
     private val viewers = mutableSetOf<UUID>()
     private val inventory: InventoryGUI
     private var outputItemCount by Delegates.notNull<Int>()
@@ -187,6 +192,66 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
             }
             potManager.toggleAutoUpgrades(pot)
             updateInventory()
+        }
+    }
+
+    private fun sellAllButton(): ItemButton? {
+        if (!isESGUIEnabled) return null
+        val potItem = pot.info.item?.asOne()
+        potItem ?: return null
+        val shopItem = EconomyShopGUIHook.getShopItem(potItem) ?: return null
+        val sellPriceForOne = EconomyShopGUIHook.getItemSellPrice(shopItem, potItem)
+        if (sellPriceForOne < 0) return null
+
+        if (!pot.info.isSellButtonEnabled) {
+            val item = ItemStack.of(Material.SHIELD)
+            item.editMeta {
+                it.displayName(parseMM("<b><dark_aqua>Sell All</dark_aqua> <red>Disabled"))
+                it.lore(
+                    listOf(
+                        parseMM("<dark_green>You have disabled selling all items."),
+                        parseMM("<green>Shift+right click<dark_green> to toggle.")
+                    )
+                )
+            }
+            return ItemButton.create(item) { e ->
+                if (!e.isRightClick) return@create
+                if (!e.isShiftClick) return@create
+                potManager.toggleSellAll(pot)
+                updateInventory()
+            }
+        }
+        val amountToSell = pot.info.amount
+        val totalPrice = sellPriceForOne * amountToSell
+
+        val item = ItemStack.of(Material.SUNFLOWER)
+        item.editMeta {
+            it.displayName(parseMM("<dark_aqua><b>Sell All"))
+            it.lore(
+                listOf(
+                    parseMM("<green>Shift+left click<dark_green> to sell all <green>${amountToSell} items"),
+                    parseMM("<dark_green>for <green>$${totalPrice.formatMoney()}."),
+                    Component.empty(),
+                    parseMM("<green>Shift+right click<dark_green> to <red>disable</red> selling.")
+                )
+            )
+        }
+        return ItemButton.create(item) { e ->
+            if (!e.isShiftClick) return@create
+            if (e.isLeftClick) {
+                potManager.remove(pot, amountToSell)
+                EconomyShopGUIHook.getEcon(shopItem.ecoType)
+                    .depositBalance(e.whoClicked as Player, totalPrice)
+                updateInventory()
+                e.whoClicked.sendRichMessage(
+                    "<dark_green>Sold <green>$amountToSell</green> <item> for <green>$$totalPrice</green>.",
+                    Placeholder.component("item", potItem.effectiveName())
+                )
+            }
+            if (e.isRightClick) {
+                potManager.toggleSellAll(pot)
+                updateInventory()
+            }
         }
     }
 
@@ -444,6 +509,15 @@ class StoragePotGUI(private var pot: Pot) : InventoryHolder, MyKoinComponent {
         gui.addButton(UPGRADE_SLOT, upgradeButton())
         gui.addButton(AUTO_SLOT, autoUpgradeButton())
         gui.addButton(DESTROY_SLOT, destroyButton())
+        val sellAllButton = sellAllButton()
+        if (sellAllButton != null) {
+            gui.addButton(SELL_ALL_SLOT, sellAllButton)
+        } else {
+            gui.getButton(SELL_ALL_SLOT)?.let {
+                gui.removeButton(it)
+                gui.inventory.setItem(SELL_ALL_SLOT, GUI.FILLER)
+            }
+        }
     }
 
     // Public-facing update method
