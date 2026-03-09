@@ -41,7 +41,7 @@ bukkit {
 repositories {
     mavenLocal()
     mavenCentral()
-    //maven("https://jitpack.io")
+    maven("https://jitpack.io")
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://eldonexus.de/repository/maven-public/")
 }
@@ -50,7 +50,7 @@ dependencies {
     compileOnly(kotlin("stdlib", version = "2.0.21"))
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("gecko10000.geckolib:GeckoLib:1.1")
-    compileOnly("me.gypopo:economyshopgui-api:1.9.0")
+    compileOnly("com.github.Gypopo:EconomyShopGUI-API:1.9.0")
     //compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
     compileOnly("net.strokkur", "strokk-commands-annotations", "1.2.4-SNAPSHOT")
     kapt("net.strokkur", "strokk-commands-processor", "1.2.4-SNAPSHOT")
